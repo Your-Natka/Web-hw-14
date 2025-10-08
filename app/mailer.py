@@ -1,6 +1,7 @@
 import os
 from email.message import EmailMessage
 import smtplib
+from urllib.parse import quote
 
 SMTP_HOST = os.getenv("SMTP_HOST", "mailhog")
 SMTP_PORT = int(os.getenv("SMTP_PORT", 1025))
@@ -8,7 +9,7 @@ FROM_EMAIL = os.getenv("FROM_EMAIL", "no-reply@example.com")
 APP_HOST = os.getenv("APP_HOST", "http://localhost:8000")
 
 def send_verification_email(to_email: str, token: str):
-    verify_link = f"{APP_HOST}/auth/verify?token={token}"
+    verify_link = f"{APP_HOST}/auth/verify?token={quote(token)}"
     msg = EmailMessage()
     msg["Subject"] = "Verify your email"
     msg["From"] = FROM_EMAIL

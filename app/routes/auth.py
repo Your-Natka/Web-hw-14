@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
-
+from urllib.parse import unquote
 from app.database import get_db
 from app import crud, models, schemas
 from app.mailer import send_verification_email, send_reset_email
@@ -74,6 +74,7 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
+    token = unquote(token)
     try:
         payload = decode_token(token)
         if payload.get("type") != "verify":
