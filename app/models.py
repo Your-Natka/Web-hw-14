@@ -1,9 +1,35 @@
+"""
+Модуль моделей бази даних.
+
+Містить ORM-моделі SQLAlchemy для таблиць:
+- User (користувачі)
+- Contact (контакти користувачів)
+
+Використовується SQLAlchemy ORM та базовий клас Base із модуля app.database.
+"""
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database import Base
 from datetime import datetime
 
 class User(Base):
+    """
+    Модель користувача системи.
+
+    Зберігає дані про користувачів: електронну пошту, пароль, ім’я користувача,
+    стан верифікації, URL аватара та час створення облікового запису.
+
+    Attributes:
+        id (int): Первинний ключ користувача.
+        email (str): Унікальна електронна пошта.
+        password (str): Хешований пароль користувача.
+        username (str): Унікальне ім’я користувача (необов’язкове поле).
+        is_verified (bool): Статус верифікації користувача.
+        avatar_url (str): Посилання на зображення аватара.
+        created_at (datetime): Час створення користувача.
+        contacts (relationship): Зв’язок один-до-багатьох з моделлю Contact.
+    """
+    
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -18,6 +44,22 @@ class User(Base):
 
 
 class Contact(Base):
+    """
+    Модель контакту користувача.
+
+    Використовується для зберігання контактної інформації користувача:
+    ім’я, email, телефон, адреса та зв’язок із власником (User).
+
+    Attributes:
+        id (int): Первинний ключ контакту.
+        name (str): Ім’я контакту.
+        email (str): Електронна пошта контакту.
+        phone (str): Телефонний номер контакту.
+        address (str): Адреса контакту.
+        owner_id (int): Зовнішній ключ до таблиці користувачів (users.id).
+        owner (relationship): Зв’язок із користувачем (User).
+    """
+    
     __tablename__ = "contacts"
 
     id = Column(Integer, primary_key=True, index=True)
