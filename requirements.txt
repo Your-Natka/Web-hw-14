@@ -44,3 +44,4 @@ sphinx
 pytest
 pytest-cov
 pytest-asyncio
+httpx
