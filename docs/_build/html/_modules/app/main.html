@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>app.main &#8212; Project name not set  documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <script src="../../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for app.main</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Головний модуль застосунку FastAPI.</span>
+
+<span class="sd">У цьому модулі створюється основний об&#39;єкт FastAPI, налаштовуються:</span>
+<span class="sd">- маршрути (auth, contacts),</span>
+<span class="sd">- CORS-доступ,</span>
+<span class="sd">- обмеження швидкості запитів (rate limiting),</span>
+<span class="sd">- ініціалізація бази даних (SQLAlchemy),</span>
+<span class="sd">- обробка помилок перевищення ліміту запитів.</span>
+
+<span class="sd">Модуль є точкою входу для всього REST API застосунку.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi</span><span class="w"> </span><span class="kn">import</span> <span class="n">FastAPI</span><span class="p">,</span> <span class="n">Request</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">fastapi.middleware.cors</span><span class="w"> </span><span class="kn">import</span> <span class="n">CORSMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">slowapi.errors</span><span class="w"> </span><span class="kn">import</span> <span class="n">RateLimitExceeded</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">slowapi.middleware</span><span class="w"> </span><span class="kn">import</span> <span class="n">SlowAPIMiddleware</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">starlette.responses</span><span class="w"> </span><span class="kn">import</span> <span class="n">JSONResponse</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.rate_limit.rate_limit</span><span class="w"> </span><span class="kn">import</span> <span class="n">limiter</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.database.database</span><span class="w"> </span><span class="kn">import</span> <span class="n">Base</span><span class="p">,</span> <span class="n">engine</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">app.routes</span><span class="w"> </span><span class="kn">import</span> <span class="n">auth</span><span class="p">,</span> <span class="n">contacts</span>
+
+<span class="c1"># ✅ Створюємо всі таблиці бази даних, якщо вони ще не існують</span>
+<div class="viewcode-block" id="init_db">
+<a class="viewcode-back" href="../../source/app.html#app.main.init_db">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">init_db</span><span class="p">():</span>
+    <span class="n">Base</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">create_all</span><span class="p">(</span><span class="n">bind</span><span class="o">=</span><span class="n">engine</span><span class="p">)</span></div>
+
+
+<span class="c1"># ✅ Ініціалізація FastAPI</span>
+<span class="n">app</span> <span class="o">=</span> <span class="n">FastAPI</span><span class="p">(</span><span class="n">title</span><span class="o">=</span><span class="s2">&quot;Contacts API with Auth &amp; Verification&quot;</span><span class="p">)</span>
+
+<span class="c1"># ✅ Налаштування CORS</span>
+<span class="n">origins</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;http://localhost:3000&quot;</span><span class="p">,</span> <span class="s2">&quot;http://127.0.0.1:3000&quot;</span><span class="p">,</span> <span class="s2">&quot;http://localhost:8080&quot;</span><span class="p">]</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">CORSMiddleware</span><span class="p">,</span> <span class="n">allow_origins</span><span class="o">=</span><span class="n">origins</span><span class="p">,</span> <span class="n">allow_credentials</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">allow_methods</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">],</span> <span class="n">allow_headers</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;*&quot;</span><span class="p">])</span>
+
+<span class="c1"># ✅ Налаштування rate limiting (SlowAPI)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">state</span><span class="o">.</span><span class="n">limiter</span> <span class="o">=</span> <span class="n">limiter</span>
+<span class="n">app</span><span class="o">.</span><span class="n">add_middleware</span><span class="p">(</span><span class="n">SlowAPIMiddleware</span><span class="p">)</span>
+
+<div class="viewcode-block" id="rate_limit_handler">
+<a class="viewcode-back" href="../../source/app.html#app.main.rate_limit_handler">[docs]</a>
+<span class="nd">@app</span><span class="o">.</span><span class="n">exception_handler</span><span class="p">(</span><span class="n">RateLimitExceeded</span><span class="p">)</span>
+<span class="k">async</span> <span class="k">def</span><span class="w"> </span><span class="nf">rate_limit_handler</span><span class="p">(</span><span class="n">request</span><span class="p">:</span> <span class="n">Request</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="n">RateLimitExceeded</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Обробник виключення при перевищенні ліміту запитів.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        request (Request): Поточний HTTP-запит.</span>
+<span class="sd">        exc (RateLimitExceeded): Об&#39;єкт винятку з деталями перевищення ліміту.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        JSONResponse: Відповідь із кодом 429 (&quot;Too Many Requests&quot;).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">JSONResponse</span><span class="p">(</span><span class="n">status_code</span><span class="o">=</span><span class="mi">429</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;detail&quot;</span><span class="p">:</span> <span class="s2">&quot;Too Many Requests&quot;</span><span class="p">})</span></div>
+
+
+<span class="c1"># ✅ Підключення основних маршрутів застосунку</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">auth</span><span class="o">.</span><span class="n">router</span><span class="p">)</span>
+<span class="n">app</span><span class="o">.</span><span class="n">include_router</span><span class="p">(</span><span class="n">contacts</span><span class="o">.</span><span class="n">router</span><span class="p">)</span>
+
+<div class="viewcode-block" id="on_startup">
+<a class="viewcode-back" href="../../source/app.html#app.main.on_startup">[docs]</a>
+<span class="nd">@app</span><span class="o">.</span><span class="n">on_event</span><span class="p">(</span><span class="s2">&quot;startup&quot;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">on_startup</span><span class="p">():</span>
+    <span class="c1"># Створюємо таблиці при запуску контейнера</span>
+    <span class="n">init_db</span><span class="p">()</span></div>
+
+   
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">Project name not set</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../source/modules.html">Web-hw-14 modules</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../source/app.html">app package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 8.2.3</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

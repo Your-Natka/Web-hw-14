@@ -11,14 +11,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from typing import List
-from app.database import get_db
-from app import crud, schemas, models
+from app.crud import crud
+from app.database.database import get_db
+from app.models import models
 from app.routes.auth import get_current_user
-from app.rate_limit import limiter
-from app.cloudinary_utils import upload_avatar_file
+from app.rate_limit.rate_limit import limiter
+from app.cloudinary_utils.cloudinary_utils import upload_avatar_file
+from app.schemas import schemas
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
+@router.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 @router.get("/ping")
 def ping():
@@ -29,7 +34,6 @@ def ping():
         dict: Повідомлення з підтвердженням роботи.
     """
     return {"message": "Contacts OK"}
-
 
 @router.get("/", response_model=List[schemas.ContactOut])
 def list_contacts(
@@ -131,8 +135,9 @@ def delete_contact(
     return None
 
 
-@router.put("/avatar", status_code=status.HTTP_200_OK)
+@router.put("/{contact_id}/avatar", status_code=status.HTTP_200_OK)
 def upload_avatar(
+    contact_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),

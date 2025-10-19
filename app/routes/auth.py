@@ -14,21 +14,24 @@ JWT для токенів доступу, та Mailhog (через send_email)
 
 from datetime import datetime, timedelta
 from typing import Optional
-import os, jwt
-from fastapi import APIRouter, Depends, HTTPException, status, Body
+import os
+import jwt
+from fastapi import APIRouter, Depends, HTTPException, status 
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from dotenv import load_dotenv
 from urllib.parse import unquote
-from app.database import get_db
-from app import crud, models, schemas
-from app.mailer import send_verification_email, send_reset_email
-from app.redis_cache import redis_client
+from app.crud import crud
+from app.database.database import get_db
+from app.models import models
+from app.mailer.mailer import send_verification_email, send_reset_email
+from app.redis_cache.redis_cache import redis_client
+from app.schemas import schemas
 
 # Завантаження змінних середовища
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret") 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
 REDIS_TTL = int(os.getenv("REDIS_TTL", 3600))
@@ -150,6 +153,10 @@ def register(user_in: schemas.UserCreate, db: Session = Depends(get_db)):
     token = create_token({"sub": new_user.email, "type": "verify"}, expires_delta=timedelta(hours=1))
     send_verification_email(new_user.email, token)
     return new_user
+
+@router.get("/health")
+async def health_check():
+    return {"status": "ok"}
 
 @router.get("/verify")
 def verify_email(token: str, db: Session = Depends(get_db)):
